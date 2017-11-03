@@ -1,12 +1,14 @@
 ﻿using AcmeAirAnalysis.Model;
-using MySql.Data.MySqlClient;
 using System;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace AcmeAirAnalysis
 {
     class Program
     {
-        private static MySqlConnection conn;
+        static string[] testNames = { "Login", "QueryFlight", "List Bookings", "logout", "BookFlight",
+                "View Profile Information", "Update Customer", "Cancel Booking" };
 
         static void Main(string[] args)
         {
@@ -14,16 +16,47 @@ namespace AcmeAirAnalysis
 
             DataSet set = dao.GetByDate("2017-10-27");
 
-            int req = 0, net = 0;
+            var fileWriter = new InvertedCSVFile();
 
-            var g = dao.GetNetworkRecords(set.Id, "coap", 0);
-            var u = dao.GetRequestRecords(set.Id, "coap", 0);
+            List<string> header = new List<string>();
+            header.Add("Protocol");
+            header.Add("Latency");
+            header.AddRange(testNames.ToList());
 
-            foreach (var a in g) { req++; }
-            foreach (var a in u) { net++; }
+            fileWriter.AddList(header);
 
-            Console.WriteLine($"Got {net} net records, {req} requests");
-            Console.ReadLine();
+            int[] latencies = { 0, 2, 5 };
+            string[] protocols = { "coap", "h2c", "http1.1" };
+
+            foreach (var latency in latencies)
+            {
+                foreach (var protocol in protocols)
+                {
+                    DoRequestAnalysis(latency, protocol, set.Id, dao, fileWriter);
+                }
+            }
+
+            fileWriter.WriteToFile("test.csv");
         }
-    }
+
+        private static void DoRequestAnalysis(int latency, string protocol, int setId, DataSetDao dao, InvertedCSVFile file)
+        {
+            Console.Write($"Analyzing requests for protocol {protocol}/{latency}ms -> ");
+
+            var stats = dao.GetStats(setId, protocol, latency);
+            var fileEntry = new List<string>();
+
+            fileEntry.Add(protocol);
+            fileEntry.Add(latency.ToString());
+
+            foreach (var testName in testNames)
+            {
+                fileEntry.Add(stats[testName].Mean.ToString());
+            }
+
+            file.AddList(fileEntry);
+
+            Console.WriteLine($"DONE!");
+        }
+    }   
 }

@@ -98,5 +98,36 @@ namespace AcmeAirAnalysis.Model
                 }
             }
         }
+
+        public Dictionary<string, StatEntry> GetStats(int importId, string protocol, int latency)
+        {
+            string sql = "SELECT AVG(responseTime) AS mean, MAX(responseTime) as max, MIN(responseTime) as min, STD(responseTime) as stdDev, testName " +
+                    "FROM request " +
+                    "WHERE importId = @importId AND protocol = @protocol AND latency = @lat " +
+                    "GROUP BY testName";
+
+            MySqlCommand cmd = new MySqlCommand(sql, conn);
+            cmd.Parameters.AddWithValue("@importId", importId);
+            cmd.Parameters.AddWithValue("@protocol", protocol);
+            cmd.Parameters.AddWithValue("@lat", latency);
+
+            Dictionary<string, StatEntry> averages = new Dictionary<string, StatEntry>();
+
+            using (MySqlDataReader rdr = cmd.ExecuteReader())
+            {
+                while (rdr.Read())
+                {
+                    averages.Add((string)rdr["testName"], new StatEntry
+                    {
+                        Max = (int)rdr["max"],
+                        Min = (int)rdr["min"],
+                        Mean = (decimal)rdr["mean"],
+                        StandardDeviation = (double)rdr["stdDev"]
+                    });
+                }
+            }
+
+            return averages;
+        }
     }
 }
