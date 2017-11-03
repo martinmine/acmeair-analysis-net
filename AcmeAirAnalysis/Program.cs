@@ -10,11 +10,23 @@ namespace AcmeAirAnalysis
         static string[] testNames = { "Login", "QueryFlight", "List Bookings", "logout", "BookFlight",
                 "View Profile Information", "Update Customer", "Cancel Booking" };
 
+        private static DataSetDao dao = new DataSetDao("server=localhost;user=root;database=acmeair;port=3306;password=123;SslMode=none");
+        private static string nowString = DateTime.Now.ToString("yyyy-MM-dd-HH.mm.ss");
+        private static int[] latencies = { 0, 2, 5 };
+        private static string[] protocols = { "coap", "h2c", "http1.1" };
+
+
         static void Main(string[] args)
         {
-            DataSetDao dao = new DataSetDao("server=localhost;user=root;database=acmeair;port=3306;password=123;SslMode=none");
+            string setDate = "2017-10-27";
+            //WriteRequestAnalysis(setDate);
+            WriteNetworkAnalysis(setDate);
+            //WriteUsageAnalysis(setDate);
+        }
 
-            DataSet set = dao.GetByDate("2017-10-27");
+        private static void WriteRequestAnalysis(string setDate)
+        {
+            DataSet set = dao.GetByDate(setDate);
 
             var fileWriter = new InvertedCSVFile();
 
@@ -25,9 +37,6 @@ namespace AcmeAirAnalysis
 
             fileWriter.AddList(header);
 
-            int[] latencies = { 0, 2, 5 };
-            string[] protocols = { "coap", "h2c", "http1.1" };
-
             foreach (var latency in latencies)
             {
                 foreach (var protocol in protocols)
@@ -36,7 +45,40 @@ namespace AcmeAirAnalysis
                 }
             }
 
-            fileWriter.WriteToFile($"results-{DateTime.Now.ToString("yyyy-MM-dd-HH.mm.ss")}.csv");
+            string filename = $"results-{nowString}.csv";
+            fileWriter.WriteToFile(filename);
+
+            Console.WriteLine("Written results to " + filename);
+        }
+
+        private static void WriteNetworkAnalysis(string setDate)
+        {
+            string[] headers = { "Protocol", "Latency", "Service", "Tx bytes", "Tx packets", "Rx bytes", "Rx Packets" };
+            DataSet set = dao.GetByDate(setDate);
+
+            var fileWriter = new InvertedCSVFile();
+            fileWriter.AddColumn(headers);
+
+            foreach (var latency in latencies)
+            {
+                foreach (var protocol in protocols)
+                {
+                    foreach (var record in dao.GetNetworkRecords(set.Id, protocol, latency))
+                    {
+                        fileWriter.AddColumn(protocol, latency, record.Servicename, record.TxBytes, record.TxPackets, record.RxBytes, record.RxPackets);
+                    }
+                }
+            }
+
+            string filename = $"network-{nowString}.csv";
+            fileWriter.WriteToFile(filename);
+
+            Console.WriteLine("Written results to " + filename);
+        }
+
+        private static void WriteUsageAnalysis(string setDate)
+        {
+
         }
 
         private static void DoRequestAnalysis(int latency, string protocol, int setId, DataSetDao dao, InvertedCSVFile file)
