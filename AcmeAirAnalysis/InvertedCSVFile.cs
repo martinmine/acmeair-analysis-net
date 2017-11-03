@@ -8,7 +8,7 @@ namespace AcmeAirAnalysis
     {
         private List<List<string>> columns = new List<List<string>>();
         private int highestLine = 0;
-        private const char delimiter = ' ';
+        private const char delimiter = ',';
 
 
         internal void AddList(List<string> lines)

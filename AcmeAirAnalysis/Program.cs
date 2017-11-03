@@ -36,7 +36,7 @@ namespace AcmeAirAnalysis
                 }
             }
 
-            fileWriter.WriteToFile("test.csv");
+            fileWriter.WriteToFile($"results-{DateTime.Now.ToString("yyyy-MM-dd-HH.mm.ss")}.csv");
         }
 
         private static void DoRequestAnalysis(int latency, string protocol, int setId, DataSetDao dao, InvertedCSVFile file)
@@ -44,19 +44,43 @@ namespace AcmeAirAnalysis
             Console.Write($"Analyzing requests for protocol {protocol}/{latency}ms -> ");
 
             var stats = dao.GetStats(setId, protocol, latency);
-            var fileEntry = new List<string>();
 
-            fileEntry.Add(protocol);
-            fileEntry.Add(latency.ToString());
+            Append(protocol, latency, stats, file, t => t.Mean);
+            Append(protocol, latency, stats, file, t => t.StandardDeviation);
+            //Append(protocol, latency, stats, file, t => GetMedian(latency, protocol, setId, dao));
+
+            Console.WriteLine("DONE!");
+        }
+
+        private static double GetMedian(int latency, string protocol, int setId, DataSetDao dao)
+        {
+            var items = new List<int>();
+            var requests = dao.GetRequestRecords(setId, protocol, latency);
+
+            foreach (var record in requests)
+            {
+                items.Add(record.ResponseTime);
+            }
+
+            items.Sort();
+            if (items.Count % 2 == 0)
+                return (items.ElementAt(items.Count / 2 - 1) + items.ElementAt(items.Count / 2)) / 2.0;
+            return items.ElementAt(items.Count / 2);
+        }
+
+        private static void Append(string protocol, int latency, Dictionary<string, StatEntry> stats, InvertedCSVFile file, Func<StatEntry, object> selector)
+        {
+            var fileEntryErr = new List<string>();
+
+            fileEntryErr.Add(protocol);
+            fileEntryErr.Add(latency.ToString());
 
             foreach (var testName in testNames)
             {
-                fileEntry.Add(stats[testName].Mean.ToString());
+                fileEntryErr.Add(selector(stats[testName]).ToString());
             }
 
-            file.AddList(fileEntry);
-
-            Console.WriteLine($"DONE!");
+            file.AddList(fileEntryErr);
         }
-    }   
+    }
 }
