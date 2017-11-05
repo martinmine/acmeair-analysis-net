@@ -99,6 +99,34 @@ namespace AcmeAirAnalysis.Model
             }
         }
 
+        public IEnumerable<CpuUsage> GetCpuUsage(int importId, string protocol, int latency)
+        {
+            string sql = "SELECT importId, time, service, latency, protocol, cpuUsage " +
+                "FROM cpuUsage " +
+                "WHERE importId=@importid AND protocol=@protocol AND latency=@latency";
+
+            MySqlCommand cmd = new MySqlCommand(sql, conn);
+            cmd.Parameters.AddWithValue("@importid", importId);
+            cmd.Parameters.AddWithValue("@protocol", protocol);
+            cmd.Parameters.AddWithValue("@latency", latency);
+
+            using (MySqlDataReader rdr = cmd.ExecuteReader())
+            {
+                while (rdr.Read())
+                {
+                    yield return new CpuUsage
+                    {
+                        ImportId = (int)rdr["importId"],
+                        Time = (DateTime)rdr["time"],
+                        Service = (string)rdr["service"],
+                        Latency = (int)rdr["latency"],
+                        Protocol = (string)rdr["protocol"],
+                        Usage = (float)rdr["cpuUsage"],
+                    };
+                }
+            }
+        }
+
         public Dictionary<string, StatEntry> GetStats(int importId, string protocol, int latency)
         {
             string sql = "SELECT AVG(responseTime) AS mean, MAX(responseTime) as max, MIN(responseTime) as min, STD(responseTime) as stdDev, testName " +

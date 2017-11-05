@@ -20,8 +20,8 @@ namespace AcmeAirAnalysis
         {
             string setDate = "2017-10-27";
             //WriteRequestAnalysis(setDate);
-            WriteNetworkAnalysis(setDate);
-            //WriteUsageAnalysis(setDate);
+            //WriteNetworkAnalysis(setDate);
+            WriteUsageAnalysis(setDate);
         }
 
         private static void WriteRequestAnalysis(string setDate)
@@ -78,7 +78,27 @@ namespace AcmeAirAnalysis
 
         private static void WriteUsageAnalysis(string setDate)
         {
+            string[] headers = { "Protocol", "Latency", "Service", "Usage" };
+            DataSet set = dao.GetByDate(setDate);
 
+            var fileWriter = new InvertedCSVFile();
+            fileWriter.AddColumn(headers);
+
+            foreach (var latency in latencies)
+            {
+                foreach (var protocol in protocols)
+                {
+                    foreach (var record in dao.GetCpuUsage(set.Id, protocol, latency))
+                    {
+                        fileWriter.AddColumn(protocol, latency, record.Service, record.Usage);
+                    }
+                }
+            }
+
+            string filename = $"usage-{nowString}.csv";
+            fileWriter.WriteToFile(filename);
+
+            Console.WriteLine("Written results to " + filename);
         }
 
         private static void DoRequestAnalysis(int latency, string protocol, int setId, DataSetDao dao, InvertedCSVFile file)
